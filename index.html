@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NFC Random Music Player</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            margin: 0;
+            padding: 15px;
+            background-color: #121212;
+            color: #ffffff;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+        .player-container {
+            text-align: center;
+            max-width: 100%;
+            width: 400px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        #welcome-img {
+            max-width: 100%;
+            max-height: 55vh;
+            object-fit: contain;
+            height: auto;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+        #welcome-img:active {
+            transform: scale(0.98);
+        }
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            width: 100%;
+        }
+        .btn {
+            background-color: #282828;
+            color: white;
+            border: none;
+            padding: 12px 16px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s;
+            flex: 1;
+            max-width: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .btn:hover {
+            background-color: #3e3e3e;
+        }
+        .btn:active {
+            transform: scale(0.95);
+        }
+        .btn-next {
+            background-color: #1db954; 
+            color: black;
+        }
+        .btn-next:hover {
+            background-color: #1ed760;
+        }
+        /* Inline SVG Icon Settings */
+        .btn svg {
+            width: 18px;
+            height: 18px;
+            stroke: currentColor;
+            stroke-width: 2.5;
+            fill: none;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            display: inline-block;
+        }
+        #status {
+            margin-top: 20px;
+            font-size: 0.9rem;
+            color: #b3b3b3;
+            height: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="player-container">
+        <img id="welcome-img" src="welcome.jpg" alt="Welcome" onclick="playRandomSong()">
+        
+        <div id="status">Tap image or Play to start</div>
+
+        <div class="controls">
+            <!-- Button initialized as a PLAY button -->
+            <button class="btn" id="btn-pause" onclick="togglePause()">
+                <span id="btn-icon-container" style="display: flex; align-items: center;"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg></span>
+                <span id="pause-text">Play</span>
+            </button>
+            
+            <button class="btn" onclick="restartSong()">
+                <svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+                <span>Restart</span>
+            </button>
+            
+            <button class="btn btn-next" onclick="playRandomSong()">
+                <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19"></line></svg>
+                <span>Next</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Hidden audio element -->
+    <audio id="audio-player"></audio>
+
+    <script>
+        const audioPlayer = document.getElementById('audio-player');
+        const statusText = document.getElementById('status');
+        const pauseText = document.getElementById('pause-text');
+        const iconContainer = document.getElementById('btn-icon-container');
+        let currentSongNum = null;
+
+        // Raw SVG graphics
+        const pauseSvg = '<svg viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>';
+        const playSvg = '<svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>';
+
+        function playRandomSong() {
+            let nextSongNum;
+            
+            do {
+                nextSongNum = Math.floor(Math.random() * 6) + 1;
+            } while (nextSongNum === currentSongNum);
+            
+            currentSongNum = nextSongNum;
+            const formattedNum = String(currentSongNum).padStart(2, '0');
+            
+            audioPlayer.src = `Rush/${formattedNum}.mp3`;
+            audioPlayer.play()
+                .then(() => {
+                    updateStatus(`Playing track ${formattedNum}`, true);
+                })
+                .catch(error => {
+                    updateStatus("Tap image or Play to enable audio playback", false);
+                    console.log("Playback blocked:", error);
+                });
+        }
+
+        function togglePause() {
+            // If no song has been picked yet, start a fresh random song
+            if (!audioPlayer.src) {
+                playRandomSong();
+                return;
+            }
+            
+            if (!audioPlayer.paused) {
+                audioPlayer.pause();
+                updateStatus("Paused", false);
+            } else {
+                audioPlayer.play();
+                const formattedNum = String(currentSongNum).padStart(2, '0');
+                updateStatus(`Playing track ${formattedNum}`, true);
+            }
+        }
+
+        function restartSong() {
+            if (!audioPlayer.src) return;
+            audioPlayer.currentTime = 0;
+            
+            if (audioPlayer.paused) {
+                audioPlayer.play()
+                    .then(() => {
+                        const formattedNum = String(currentSongNum).padStart(2, '0');
+                        updateStatus(`Playing track ${formattedNum}`, true);
+                    });
+            } else {
+                const formattedNum = String(currentSongNum).padStart(2, '0');
+                updateStatus(`Playing track ${formattedNum}`, true);
+            }
+        }
+
+        function updateStatus(text, isPlaying) {
+            statusText.textContent = text;
+            
+            if (isPlaying) {
+                pauseText.textContent = "Pause";
+                iconContainer.innerHTML = pauseSvg;
+            } else {
+                pauseText.textContent = "Play";
+                iconContainer.innerHTML = playSvg;
+            }
+        }
+
+        audioPlayer.addEventListener('ended', () => {
+            statusText.textContent = "Song ended. Loading next...";
+            playRandomSong();
+        });
+    </script>
+</body>
+</html>
